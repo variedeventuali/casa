@@ -73,6 +73,11 @@ nav button.on{color:var(--accent);font-weight:600}
 .slot .w{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--mute)}
 .slot .t{font-size:16.5px;overflow-wrap:anywhere}
 .slot .t.none{color:var(--mute)}
+.dd{margin-top:4px;border-radius:12px;overflow:hidden}
+.dd:not(:empty){border:1px solid var(--line);box-shadow:var(--shadow)}
+.ddi{display:flex;flex-direction:column;align-items:flex-start;width:100%;text-align:left;background:var(--surface);border:0;border-top:1px solid var(--line);padding:9px 12px}
+.ddi:first-child{border-top:0}.ddi:active{background:var(--bg)}
+.ddi small{color:var(--mute);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
 .chip{font-size:12px;background:var(--c4);color:#1f2420;border-radius:10px;padding:1px 8px}
 :root[data-theme="dark"] .chip{color:#ecefe9}
@@ -120,7 +125,7 @@ label.l{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
 <script>
 (function () {
   'use strict';
-  var APP_VERSION = '1.1 · 21 ott 2026';
+  var APP_VERSION = '1.2 · 21 ott 2026';
   var KEY = 'casa-state', SYNC_KEY = 'casa-sync', SYNC_FILE = 'casa-dati.json';
   var DAYS = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
   var DS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
@@ -215,9 +220,8 @@ label.l{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
   }
   function recipeList() { return Object.keys(state.recipes).map(function (k) { return state.recipes[k]; }).filter(function (r) { return !r.del && r.name; }).sort(function (a, b) { return a.name.localeCompare(b.name, 'it'); }); }
   function pickerHTML(f) {
-    var s = norm(f), l = recipeList().filter(function (r) { return !s || norm(r.name).indexOf(s) >= 0; });
-    if (!recipeList().length) return '<p class="msg">Nessuna ricetta salvata: salvando un piatto con ingredienti entra qui.</p>';
-    return l.length ? l.map(function (r) { return '<button type="button" class="chip pk" data-a="pick" data-k="' + esc(norm(r.name)) + '">' + esc(r.name) + '</button>'; }).join('') : '<p class="msg">Nessuna ricetta corrisponde.</p>';
+    var s = norm(f), l = recipeList().filter(function (r) { return norm(r.name) !== s && (!s || norm(r.name).indexOf(s) >= 0); }).slice(0, 6);
+    return l.map(function (r) { return '<button type="button" class="ddi" data-a="pick" data-k="' + esc(norm(r.name)) + '"><span>' + esc(r.name) + '</span><small>' + esc((r.ing || []).join(', ')) + '</small></button>'; }).join('');
   }
   function isChecked(k) { return !!(state.checked[k] && state.checked[k].v); }
   function manualList() { return Object.keys(state.manual).map(function (k) { return state.manual[k]; }).filter(function (x) { return !x.del; }).sort(function (a, b) { return (a.c || 0) - (b.c || 0); }); }
@@ -387,9 +391,9 @@ label.l{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
     editSlot = k; var sl = slotOf(k);
     $modal.innerHTML = '<div class="modal" data-a="close-bg"><div class="sheet"><h2>' + DAYS[+k[0]] + ' · ' + (k[1] === 'p' ? 'Pranzo' : 'Cena') + '</h2>' +
       '<label class="l">Cosa si mangia</label><input class="fld" id="sl-t" value="' + esc(sl.t) + '" autocomplete="off">' +
-      '<label class="l">Scegli dalle ricette</label><div class="chips" id="pk" style="max-height:110px;overflow-y:auto">' + pickerHTML('') + '</div>' +
+      '<div class="dd" id="pk"></div>' +
       '<label class="l">Ingredienti da comprare (separati da virgola)</label><textarea class="fld" id="sl-i" rows="3">' + esc((sl.ing || []).join(', ')) + '</textarea>' +
-      '<p class="msg">Scrivendo il nome si filtrano le ricette; toccandone una si compilano piatto e ingredienti. Lascia vuoto per cene fuori o piatti senza spesa.</p>' +
+      '<p class="msg">Toccando il campo ti propongo le ricette già salvate: sceglierne una compila anche gli ingredienti. Lascia vuoto per cene fuori o piatti senza spesa.</p>' +
       '<div class="btnrow"><button class="btn pri" data-a="slotsave">Salva</button><button class="btn" data-a="slotextract">Ingredienti dal nome</button><button class="btn dng" data-a="slotclear">Svuota</button></div></div></div>';
   }
   function saveSlot(clear) {
@@ -424,7 +428,7 @@ label.l{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
       case 'additem': addItem(); break;
       case 'itchk': n.items.forEach(function (i) { if (i.id === id) i.d = !i.d; }); touchNote(n); render(); break;
       case 'itrm': n.items = n.items.filter(function (i) { return i.id !== id; }); touchNote(n); render(); break;
-      case 'pick': var rp = state.recipes[b.getAttribute('data-k')]; if (rp) { document.getElementById('sl-t').value = rp.name; document.getElementById('sl-i').value = (rp.ing || []).join(', '); } break;
+      case 'pick': var rp = state.recipes[b.getAttribute('data-k')]; if (rp) { document.getElementById('sl-t').value = rp.name; document.getElementById('sl-i').value = (rp.ing || []).join(', '); document.getElementById('pk').innerHTML = ''; } break;
       case 'recipe': openRecipe(b.getAttribute('data-k')); break;
       case 'recsave': saveRecipe(); break;
       case 'recextract': document.getElementById('rc-i').value = extract(document.getElementById('rc-n').value).join(', '); break;
@@ -472,6 +476,7 @@ label.l{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}
     else if (el.id === 'n-b') { n.body = el.value; touchNote(n); }
     else if (el.classList.contains('it-in') && el.getAttribute('data-id')) { n.items.forEach(function (i) { if (i.id === el.getAttribute('data-id')) i.t = el.value; }); touchNote(n); }
   });
+  document.addEventListener('focusin', function (e) { if (e.target.id === 'sl-t') { var pk = document.getElementById('pk'); if (pk) pk.innerHTML = pickerHTML(''); } });
   document.addEventListener('change', function (e) {
     if (e.target.id === 'sl-t') {
       var r = state.recipes[norm(e.target.value)], ing = document.getElementById('sl-i');
